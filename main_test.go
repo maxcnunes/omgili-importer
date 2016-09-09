@@ -3,12 +3,13 @@ package main
 import (
 	"flag"
 	"os"
+	"reflect"
 	"testing"
 )
 
 var isIntegratoinEnabled = flag.Bool("integration", false, "Enable integration tests")
 
-func TestDownloadFeedList(t *testing.T) {
+func TestDownload(t *testing.T) {
 	if !*isIntegratoinEnabled {
 		t.Skip("Itegration tests disabled")
 	}
@@ -16,18 +17,25 @@ func TestDownloadFeedList(t *testing.T) {
 	var tests = []struct {
 		url     string
 		success bool
+		resp    *DownloadResponse
 	}{
-		{defaultFeedURL, true},
-		{"http://bitly.com/nuvi-plz_not_valid", false},
+		{defaultFeedURL, true, &DownloadResponse{
+			Path: "omgili-feed-list.html",
+			URL:  "http://feed.omgili.com/5Rh5AMTrc4Pv/mainstream/posts/"}},
+		{"http://bitly.com/nuvi-plz_not_valid", false, nil},
 	}
 
 	for _, tt := range tests {
-		err := DownloadFeedList(tt.url)
+		resp, err := Download(tt.url, pathTemFeedListFile)
 		if !tt.success && err == nil {
 			t.Error("Expected to return an error for invalid URLs")
 		} else if tt.success {
 			if err != nil {
 				t.Error(err)
+			}
+
+			if !reflect.DeepEqual(resp, tt.resp) {
+				t.Errorf("Expected %#v to be equal to %#v", resp, tt.resp)
 			}
 
 			if _, err := os.Stat(pathTemFeedListFile); os.IsNotExist(err) {

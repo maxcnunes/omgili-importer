@@ -16,25 +16,38 @@ const (
 	pathTemFeedListFile = "omgili-feed-list.html"
 )
 
-// DownloadFeedList get the feed list from the omgili webpage and save the result to a local file
-func DownloadFeedList(omgiliURL string) error {
-	out, err := os.Create(pathTemFeedListFile)
+// DownloadResponse ...
+type DownloadResponse struct {
+	Path string
+	URL  string
+}
+
+// Download ...
+func Download(url string, outputPath string) (*DownloadResponse, error) {
+	out, err := os.Create(outputPath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer out.Close()
 
-	resp, err := http.Get(omgiliURL)
+	resp, err := http.Get(url)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		return errors.New("Problem fetching feed list. Status Code: " + resp.Status)
+	if resp.StatusCode >= 300 {
+		return nil, errors.New(resp.Status)
 	}
 
 	_, err = io.Copy(out, resp.Body)
-	return err
+	if err != nil {
+		return nil, err
+	}
+
+	return &DownloadResponse{
+		Path: outputPath,
+		URL:  resp.Request.URL.String(),
+	}, nil
 }
 
 // ExtractFeedFileNames read the feed list HTML and extract the feed filenames
@@ -63,7 +76,7 @@ func main() {
 	flag.Parse()
 	fmt.Printf("Starting importer from %s\n", *feedURL)
 
-	err := DownloadFeedList(*feedURL)
+	resp, err := Download(*feedURL, pathTemFeedListFile)
 	if err != nil {
 		fmt.Print("Error downloading feed list", err)
 		os.Exit(1)
@@ -79,6 +92,15 @@ func main() {
 	}()
 
 	for filename := range chFiles {
-		fmt.Print(filename)
+		zipURL := resp.URL + filename
+		fmt.Printf("Downloading file %s\n", zipURL)
+		_, err := Download(zipURL, filename)
+		if err != nil {
+			fmt.Print("Error downloading ZIP feed data", err)
+			os.Exit(1)
+		}
+		fmt.Print("DOWNLOAD OK")
+		os.Exit(1)
+		// err := archiver.Unzip("input.zip", "output_folder")
 	}
 }
