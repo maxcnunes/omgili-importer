@@ -1,12 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"regexp"
 )
 
 const (
@@ -35,6 +37,27 @@ func DownloadFeedList(omgiliURL string) error {
 	return err
 }
 
+// ExtractFeedFileNames read the feed list HTML and extract the feed filenames
+func ExtractFeedFileNames(pathTemFeedListFile string, chFiles chan string) error {
+	regexFeedFile, _ := regexp.Compile(`href="(.*\.zip)"`)
+
+	file, err := os.Open(pathTemFeedListFile)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		matches := regexFeedFile.FindStringSubmatch(scanner.Text())
+		if len(matches) == 2 {
+			chFiles <- matches[1]
+		}
+	}
+
+	return scanner.Err()
+}
+
 func main() {
 	var feedURL = flag.String("url", defaultFeedURL, "URL for feed list")
 	flag.Parse()
@@ -43,5 +66,19 @@ func main() {
 	err := DownloadFeedList(*feedURL)
 	if err != nil {
 		fmt.Print("Error downloading feed list", err)
+		os.Exit(1)
+	}
+
+	chFiles := make(chan string)
+	go func() {
+		if err := ExtractFeedFileNames(pathTemFeedListFile, chFiles); err != nil {
+			fmt.Print("Error extracting feed filenames", err)
+			os.Exit(1)
+		}
+		close(chFiles)
+	}()
+
+	for filename := range chFiles {
+		fmt.Print(filename)
 	}
 }

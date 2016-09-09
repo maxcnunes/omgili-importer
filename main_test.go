@@ -37,3 +37,35 @@ func TestDownloadFeedList(t *testing.T) {
 
 	}
 }
+
+func TestExtractFeedFileNames(t *testing.T) {
+	var tests = []struct {
+		filename   string
+		success    bool
+		totalFound int
+	}{
+		{"fixtures/" + pathTemFeedListFile, true, 1159},
+		{"fixtures/invalid_file", false, 0},
+	}
+
+	for _, tt := range tests {
+		totalFound := 0
+		chFiles := make(chan string)
+
+		go func() {
+			err := ExtractFeedFileNames(tt.filename, chFiles)
+			if !tt.success && err == nil {
+				t.Error("Expected to return an error for invalid files")
+			}
+			close(chFiles)
+		}()
+
+		for range chFiles {
+			totalFound++
+		}
+
+		if totalFound != tt.totalFound {
+			t.Errorf("Expected to find %d but got %d", tt.totalFound, totalFound)
+		}
+	}
+}
