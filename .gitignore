@@ -1,3 +1,5 @@
 .DS_Store
 builds
 /omgili-feed-list.html
+/*.xml
+/*.zip

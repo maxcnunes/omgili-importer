@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+
+	"github.com/mholt/archiver"
 )
 
 const (
@@ -96,11 +98,17 @@ func main() {
 		fmt.Printf("Downloading file %s\n", zipURL)
 		_, err := Download(zipURL, filename)
 		if err != nil {
-			fmt.Print("Error downloading ZIP feed data", err)
+			fmt.Println("Error downloading ZIP feed data", err)
 			os.Exit(1)
 		}
-		fmt.Print("DOWNLOAD OK")
+
+		err = archiver.Unzip(filename, ".")
+		if err != nil {
+			fmt.Println("Error extracting ZIP feed data", err)
+			os.Exit(1)
+		}
+
+		fmt.Println("DOWNLOAD OK")
 		os.Exit(1)
-		// err := archiver.Unzip("input.zip", "output_folder")
 	}
 }
