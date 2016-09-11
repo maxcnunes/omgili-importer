@@ -77,3 +77,35 @@ func TestExtractFeedFileNames(t *testing.T) {
 		}
 	}
 }
+
+func TestFindZIPFiles(t *testing.T) {
+	var tests = []struct {
+		path       string
+		success    bool
+		totalFound int
+	}{
+		{"fixtures/omgili-feeds.zip", true, 1},
+		{"fixtures/invalid_file", false, 0},
+	}
+
+	for _, tt := range tests {
+		totalFound := 0
+		chFiles := make(chan string)
+
+		go func() {
+			err := FindZIPFiles(tt.path, chFiles)
+			if !tt.success && err == nil {
+				t.Error("Expected to return an error for invalid files")
+			}
+			close(chFiles)
+		}()
+
+		for range chFiles {
+			totalFound++
+		}
+
+		if totalFound != tt.totalFound {
+			t.Errorf("Expected to find %d but got %d", tt.totalFound, totalFound)
+		}
+	}
+}

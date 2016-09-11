@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
 
 	"github.com/mholt/archiver"
@@ -73,42 +74,83 @@ func ExtractFeedFileNames(pathTemFeedListFile string, chFiles chan string) error
 	return scanner.Err()
 }
 
+// FindZIPFiles ...
+func FindZIPFiles(pathZIPFiles string, chFiles chan string) error {
+	findZIPFile := func(fp string, fi os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if fi.IsDir() && fp != pathZIPFiles {
+			return filepath.SkipDir
+		}
+		matched, err := regexp.MatchString(`^.*\.zip$`, fi.Name())
+		if err != nil {
+			return err
+		}
+		if matched {
+			chFiles <- fi.Name()
+		}
+		return nil
+	}
+
+	return filepath.Walk(pathZIPFiles, findZIPFile)
+}
+
 func main() {
 	var feedURL = flag.String("url", defaultFeedURL, "URL for feed list")
+	var downloadDisabled = flag.Bool("disable-download", false, "Disable downloads. Useful to run over pre fetched zip files")
 	flag.Parse()
 	fmt.Printf("Starting importer from %s\n", *feedURL)
 
-	resp, err := Download(*feedURL, pathTemFeedListFile)
-	if err != nil {
-		fmt.Print("Error downloading feed list", err)
-		os.Exit(1)
+	var err error
+	var resp *DownloadResponse
+	chFiles := make(chan string)
+
+	if *downloadDisabled {
+		go func() {
+			if err := FindZIPFiles(".", chFiles); err != nil {
+				fmt.Println("Error finding feed filenames", err)
+				os.Exit(1)
+			}
+			close(chFiles)
+		}()
+	} else {
+		resp, err = Download(*feedURL, pathTemFeedListFile)
+		if err != nil {
+			fmt.Println("Error downloading feed list", err)
+			os.Exit(1)
+		}
+
+		go func() {
+			if err := ExtractFeedFileNames(pathTemFeedListFile, chFiles); err != nil {
+				fmt.Print("Error extracting feed filenames", err)
+				os.Exit(1)
+			}
+			close(chFiles)
+		}()
 	}
 
-	chFiles := make(chan string)
-	go func() {
-		if err := ExtractFeedFileNames(pathTemFeedListFile, chFiles); err != nil {
-			fmt.Print("Error extracting feed filenames", err)
-			os.Exit(1)
-		}
-		close(chFiles)
-	}()
-
 	for filename := range chFiles {
-		zipURL := resp.URL + filename
-		fmt.Printf("Downloading file %s\n", zipURL)
-		_, err := Download(zipURL, filename)
-		if err != nil {
-			fmt.Println("Error downloading ZIP feed data", err)
-			os.Exit(1)
+		if !*downloadDisabled {
+			zipURL := resp.URL + filename
+			fmt.Printf("Downloading file %s\n", zipURL)
+			_, err := Download(zipURL, filename)
+			if err != nil {
+				fmt.Println("Error downloading ZIP feed data", err)
+				os.Exit(1)
+			}
 		}
 
+		fmt.Println("Extracting", filename)
 		err = archiver.Unzip(filename, ".")
 		if err != nil {
 			fmt.Println("Error extracting ZIP feed data", err)
 			os.Exit(1)
 		}
 
-		fmt.Println("DOWNLOAD OK")
-		os.Exit(1)
+		if !*downloadDisabled {
+			fmt.Println("DOWNLOAD OK")
+			os.Exit(1)
+		}
 	}
 }
