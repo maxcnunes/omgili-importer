@@ -25,13 +25,13 @@ const (
 	redisBaseIndexNewsXML = "news_xml_index_"
 )
 
-// DownloadResponse ...
+// DownloadResponse has information about the downloaded file
 type DownloadResponse struct {
 	Path string
 	URL  string
 }
 
-// Download ...
+// Download file from a URL to the local file system
 func Download(url string, outputPath string) (*DownloadResponse, error) {
 	out, err := os.Create(outputPath)
 	if err != nil {
@@ -79,6 +79,7 @@ func ExtractFeedFileNames(pathTemFeedListFile string, chZIPFiles chan string) er
 
 	return scanner.Err()
 }
+
 func redisNewClient(address string, password string, db int) *redis.Client {
 	return redis.NewClient(&redis.Options{
 		Addr:     address,
@@ -87,7 +88,7 @@ func redisNewClient(address string, password string, db int) *redis.Client {
 	})
 }
 
-// FindZIPFiles ...
+// FindZIPFiles get zip file names from a path
 func FindZIPFiles(pathZIPFiles string, chZIPFiles chan string) error {
 	findZIPFile := func(fp string, fi os.FileInfo, err error) error {
 		if err != nil {
@@ -109,7 +110,7 @@ func FindZIPFiles(pathZIPFiles string, chZIPFiles chan string) error {
 	return filepath.Walk(pathZIPFiles, findZIPFile)
 }
 
-// FindXMLFiles ...
+// FindXMLFiles get xml files names from a path
 func FindXMLFiles(pathXMLFiles string, chXMLFiles chan string) error {
 	findXMLFile := func(fp string, fi os.FileInfo, err error) error {
 		if err != nil {
@@ -131,7 +132,7 @@ func FindXMLFiles(pathXMLFiles string, chXMLFiles chan string) error {
 	return filepath.Walk(pathXMLFiles, findXMLFile)
 }
 
-// SetOrPushNewsToList ...
+// SetOrPushNewsToList save a news to a Redis list
 func SetOrPushNewsToList(client *redis.Client, listName string, hash string, content []byte) error {
 	var index int64
 	indexKey := redisBaseIndexNewsXML + hash
