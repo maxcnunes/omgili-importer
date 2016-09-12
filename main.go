@@ -16,6 +16,7 @@ import (
 	"gopkg.in/redis.v4"
 
 	"github.com/mholt/archiver"
+	"github.com/mitchellh/ioprogress"
 )
 
 const (
@@ -32,7 +33,7 @@ type DownloadResponse struct {
 }
 
 // Download file from a URL to the local file system
-func Download(url string, outputPath string) (*DownloadResponse, error) {
+func Download(url string, outputPath string, progressEnabled bool) (*DownloadResponse, error) {
 	out, err := os.Create(outputPath)
 	if err != nil {
 		return nil, err
@@ -48,9 +49,28 @@ func Download(url string, outputPath string) (*DownloadResponse, error) {
 		return nil, errors.New(resp.Status)
 	}
 
-	_, err = io.Copy(out, resp.Body)
-	if err != nil {
-		return nil, err
+	if progressEnabled {
+		size := resp.ContentLength
+
+		printProgress := func(progress, total int64) string {
+			return ioprogress.DrawTextFormatBytes(progress, total)
+		}
+
+		progress := &ioprogress.Reader{
+			Reader:   resp.Body,
+			Size:     size,
+			DrawFunc: ioprogress.DrawTerminalf(os.Stdout, printProgress),
+		}
+
+		_, err = io.Copy(out, progress)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		_, err = io.Copy(out, resp.Body)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &DownloadResponse{
@@ -188,7 +208,7 @@ func main() {
 			close(chZIPFiles)
 		}()
 	} else {
-		resp, err = Download(*feedURL, pathTemFeedListFile)
+		resp, err = Download(*feedURL, pathTemFeedListFile, false)
 		if err != nil {
 			fmt.Println("Error downloading feed list", err)
 			os.Exit(1)
@@ -207,7 +227,7 @@ func main() {
 		if !*downloadDisabled {
 			zipURL := resp.URL + filename
 			fmt.Printf("Downloading file %s\n", zipURL)
-			_, err := Download(zipURL, filename)
+			_, err := Download(zipURL, filename, true)
 			if err != nil {
 				fmt.Println("Error downloading ZIP feed data", err)
 				os.Exit(1)

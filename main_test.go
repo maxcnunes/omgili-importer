@@ -26,7 +26,7 @@ func TestDownload(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		resp, err := Download(tt.url, pathTemFeedListFile)
+		resp, err := Download(tt.url, pathTemFeedListFile, false)
 		if !tt.success && err == nil {
 			t.Error("Expected to return an error for invalid URLs")
 		} else if tt.success {
