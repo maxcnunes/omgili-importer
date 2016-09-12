@@ -17,6 +17,7 @@ import (
 
 	"github.com/mholt/archiver"
 	"github.com/mitchellh/ioprogress"
+	"github.com/tj/go-spin"
 )
 
 const (
@@ -170,11 +171,9 @@ func SetOrPushNewsToList(client *redis.Client, listName string, hash string, con
 	}
 
 	if index > -1 {
-		fmt.Println("Updating news", index, hash)
 		return client.LSet(listName, index, content).Err()
 	}
 
-	fmt.Println("Pushing news", hash)
 	rPush := client.RPush(listName, content)
 	if rPush.Err() != nil {
 		return err
@@ -182,7 +181,6 @@ func SetOrPushNewsToList(client *redis.Client, listName string, hash string, con
 
 	length := rPush.Val()
 	index = length - 1
-	fmt.Println("Saving news index", index, hash)
 
 	return client.Set(indexKey, index, 0).Err()
 }
@@ -252,23 +250,30 @@ func main() {
 			close(chXMLFiles)
 		}()
 
+		idx := 0
+		s := spin.New()
 		for xmlFileName := range chXMLFiles {
+			if idx%100 == 0 {
+				fmt.Printf("\rSaving feeds to redis %s ", s.Next())
+			}
+
 			content, err := ioutil.ReadFile(xmlFileName)
 			if err != nil {
-				fmt.Println("Error reading XML", err)
+				fmt.Printf("\nError reading XML %s\n", err)
 				os.Exit(1)
 			}
 
 			err = SetOrPushNewsToList(client, redisListNewsXML, xmlFileName, content)
 			if err != nil {
-				fmt.Println("Error saving XML into the Redis DB", err)
+				fmt.Printf("Error saving XML into the Redis DB %s\n", err)
 				os.Exit(1)
 			}
+
+			idx++
 		}
 
-		if !*downloadDisabled {
-			fmt.Println("DOWNLOAD OK")
-			os.Exit(1)
-		}
+		fmt.Printf("\n\n")
 	}
+
+	fmt.Println("Finished")
 }
