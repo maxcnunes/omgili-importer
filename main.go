@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"gopkg.in/redis.v4"
 
@@ -234,8 +235,9 @@ func main() {
 			}
 		}
 
-		fmt.Println("Extracting", filename)
-		err = archiver.Unzip(filename, ".")
+		zipOutput := strings.Replace(filename, ".zip", "", -1)
+		fmt.Println("Extracting", filename, "to", zipOutput)
+		err = archiver.Unzip(filename, zipOutput)
 		if err != nil {
 			fmt.Println("Error extracting ZIP feed data", err)
 			os.Exit(1)
@@ -243,7 +245,7 @@ func main() {
 
 		chXMLFiles := make(chan string)
 		go func() {
-			if err := FindXMLFiles(".", chXMLFiles); err != nil {
+			if err := FindXMLFiles(zipOutput, chXMLFiles); err != nil {
 				fmt.Println("Error finding feed XML filenames", err)
 				os.Exit(1)
 			}
@@ -257,7 +259,8 @@ func main() {
 				fmt.Printf("\rSaving feeds to redis %s ", s.Next())
 			}
 
-			content, err := ioutil.ReadFile(xmlFileName)
+			filePath := zipOutput + "/" + xmlFileName
+			content, err := ioutil.ReadFile(filePath)
 			if err != nil {
 				fmt.Printf("\nError reading XML %s\n", err)
 				os.Exit(1)
