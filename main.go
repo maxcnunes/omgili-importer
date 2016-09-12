@@ -174,13 +174,15 @@ func SetOrPushNewsToList(client *redis.Client, listName string, hash string, con
 		return client.LSet(listName, index, content).Err()
 	}
 
-	fmt.Println("Pushing news", index, hash)
+	fmt.Println("Pushing news", hash)
 	rPush := client.RPush(listName, content)
 	if rPush.Err() != nil {
 		return err
 	}
 
-	index = rPush.Val()
+	length := rPush.Val()
+	index = length - 1
+	fmt.Println("Saving news index", index, hash)
 
 	return client.Set(indexKey, index, 0).Err()
 }
