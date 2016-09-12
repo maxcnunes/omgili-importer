@@ -47,3 +47,10 @@ Only unit tests not depending in external resources:
 ```bash
 go test -v
 ```
+
+## TODO (known improvements)
+
+* Download multiple files concurrently to improve the performance
+* Remove temp files
+* Allow choose an output directory
+* Improve test coverage
