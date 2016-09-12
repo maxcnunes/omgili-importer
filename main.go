@@ -21,7 +21,7 @@ import (
 
 const (
 	defaultFeedURL        = "http://bitly.com/nuvi-plz"
-	pathTemFeedListFile   = "omgili-feed-list.html"
+	pathTempFeedListFile  = "omgili-feed-list.html"
 	redisListNewsXML      = "news_xml"
 	redisBaseIndexNewsXML = "news_xml_index_"
 )
@@ -80,10 +80,10 @@ func Download(url string, outputPath string, progressEnabled bool) (*DownloadRes
 }
 
 // ExtractFeedFileNames read the feed list HTML and extract the feed filenames
-func ExtractFeedFileNames(pathTemFeedListFile string, chZIPFiles chan string) error {
+func ExtractFeedFileNames(pathTempFeedListFile string, chZIPFiles chan string) error {
 	regexFeedFile, _ := regexp.Compile(`href="(.*\.zip)"`)
 
-	file, err := os.Open(pathTemFeedListFile)
+	file, err := os.Open(pathTempFeedListFile)
 	if err != nil {
 		return err
 	}
@@ -208,14 +208,14 @@ func main() {
 			close(chZIPFiles)
 		}()
 	} else {
-		resp, err = Download(*feedURL, pathTemFeedListFile, false)
+		resp, err = Download(*feedURL, pathTempFeedListFile, false)
 		if err != nil {
 			fmt.Println("Error downloading feed list", err)
 			os.Exit(1)
 		}
 
 		go func() {
-			if err := ExtractFeedFileNames(pathTemFeedListFile, chZIPFiles); err != nil {
+			if err := ExtractFeedFileNames(pathTempFeedListFile, chZIPFiles); err != nil {
 				fmt.Print("Error extracting feed filenames", err)
 				os.Exit(1)
 			}

@@ -26,7 +26,7 @@ func TestDownload(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		resp, err := Download(tt.url, pathTemFeedListFile, false)
+		resp, err := Download(tt.url, pathTempFeedListFile, false)
 		if !tt.success && err == nil {
 			t.Error("Expected to return an error for invalid URLs")
 		} else if tt.success {
@@ -38,8 +38,8 @@ func TestDownload(t *testing.T) {
 				t.Errorf("Expected %#v to be equal to %#v", resp, tt.resp)
 			}
 
-			if _, err := os.Stat(pathTemFeedListFile); os.IsNotExist(err) {
-				t.Errorf("Expected %s to have been download from %s", pathTemFeedListFile, defaultFeedURL)
+			if _, err := os.Stat(pathTempFeedListFile); os.IsNotExist(err) {
+				t.Errorf("Expected %s to have been download from %s", pathTempFeedListFile, defaultFeedURL)
 			}
 		}
 
@@ -52,7 +52,7 @@ func TestExtractFeedFileNames(t *testing.T) {
 		success    bool
 		totalFound int
 	}{
-		{"fixtures/" + pathTemFeedListFile, true, 1159},
+		{"fixtures/" + pathTempFeedListFile, true, 1159},
 		{"fixtures/invalid_file", false, 0},
 	}
 
